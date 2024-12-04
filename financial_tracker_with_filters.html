@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        .container {
+            margin: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .summary div {
+            text-align: center;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            width: 30%;
+        }
+        .filters {
+            margin-bottom: 20px;
+        }
+        .filters input, .filters select {
+            padding: 5px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .transactions-table th, .transactions-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .transactions-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .buttons button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .buttons button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Financial Tracker</h1>
+    </header>
+    <div class="container">
+        <section class="summary">
+            <div>
+                <h2>Saldo Total</h2>
+                <p id="total-balance">R$ 0,00</p>
+            </div>
+            <div>
+                <h2>Receitas</h2>
+                <p id="total-income">R$ 0,00</p>
+            </div>
+            <div>
+                <h2>Despesas</h2>
+                <p id="total-expenses">R$ 0,00</p>
+            </div>
+        </section>
+        <div class="filters">
+            <label for="filter-category">Categoria:</label>
+            <select id="filter-category" onchange="applyFilters()">
+                <option value="">Todas</option>
+            </select>
+            <label for="filter-date">Data:</label>
+            <input type="date" id="filter-date" onchange="applyFilters()">
+        </div>
+        <table class="transactions-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody id="transactions-body">
+                <tr>
+                    <td colspan="4">Nenhuma transação registrada</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="buttons">
+            <button onclick="exportToExcel()">Exportar para Excel</button>
+            <button onclick="exportToPDF()">Exportar para PDF</button>
+        </div>
+    </div>
+
+    <script>
+        const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+        function updateUI() {
+            const tbody = document.getElementById('transactions-body');
+            tbody.innerHTML = "";
+            const filterCategory = document.getElementById('filter-category').value;
+            const filterDate = document.getElementById('filter-date').value;
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            let filteredTransactions = transactions;
+
+            if (filterCategory) {
+                filteredTransactions = filteredTransactions.filter(t => t.category === filterCategory);
+            }
+            if (filterDate) {
+                filteredTransactions = filteredTransactions.filter(t => t.date === filterDate);
+            }
+
+            if (filteredTransactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Nenhuma transação encontrada</td></tr>';
+            } else {
+                filteredTransactions.forEach((transaction) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${transaction.date}</td>
+                        <td>${transaction.description}</td>
+                        <td>${transaction.category}</td>
+                        <td>${transaction.value > 0 ? 'R$ ' + transaction.value.toFixed(2) : '-R$ ' + Math.abs(transaction.value).toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(row);
+
+                    if (transaction.value > 0) {
+                        totalIncome += transaction.value;
+                    } else {
+                        totalExpenses += Math.abs(transaction.value);
+                    }
+                });
+            }
+
+            document.getElementById('total-income').textContent = 'R$ ' + totalIncome.toFixed(2);
+            document.getElementById('total-expenses').textContent = 'R$ ' + totalExpenses.toFixed(2);
+            document.getElementById('total-balance').textContent = 'R$ ' + (totalIncome - totalExpenses).toFixed(2);
+
+            updateFilterOptions();
+        }
+
+        function updateFilterOptions() {
+            const categorySelect = document.getElementById('filter-category');
+            const uniqueCategories = [...new Set(transactions.map(t => t.category))];
+            categorySelect.innerHTML = '<option value="">Todas</option>';
+            uniqueCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
+        }
+
+        function exportToExcel() {
+            alert('Exportação para Excel ainda não implementada.');
+        }
+
+        function exportToPDF() {
+            alert('Exportação para PDF ainda não implementada.');
+        }
+
+        function applyFilters() {
+            updateUI();
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>

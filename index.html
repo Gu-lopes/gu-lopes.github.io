@@ -12,28 +12,24 @@
             padding: 0;
             background-color: #f4f4f9;
         }
-
         header {
             background-color: #4CAF50;
             color: white;
             padding: 10px 20px;
             text-align: center;
         }
-
         .container {
             margin: 20px;
             padding: 20px;
             background: white;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
         .summary {
             display: flex;
             justify-content: space-around;
             margin-bottom: 20px;
         }
-
         .summary div {
             text-align: center;
             padding: 10px;
@@ -41,49 +37,75 @@
             border-radius: 8px;
             width: 30%;
         }
-
+        .filters {
+            margin-bottom: 20px;
+        }
+        .filters input, .filters select {
+            padding: 5px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
         .transactions-table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
         }
-
-        .transactions-table th,
-        .transactions-table td {
+        .transactions-table th, .transactions-table td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
         }
-
         .transactions-table th {
             background-color: #4CAF50;
             color: white;
         }
-
-        button {
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .buttons button {
             padding: 10px 20px;
-            margin-top: 10px;
+            margin-left: 10px;
             border: none;
             background: #4CAF50;
             color: white;
             border-radius: 8px;
             cursor: pointer;
         }
-
-        button:hover {
+        .buttons button:hover {
             background: #45a049;
         }
-
-        @media (max-width: 768px) {
-            .summary {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .summary div {
-                width: 100%;
-                margin-bottom: 10px;
-            }
+        .transaction-form {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .transaction-form h3 {
+            margin-bottom: 15px;
+        }
+        .transaction-form form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .transaction-form input,
+        .transaction-form button {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .transaction-form button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        .transaction-form button:hover {
+            background: #45a049;
         }
     </style>
 </head>
@@ -106,6 +128,14 @@
                 <p id="total-expenses">R$ 0,00</p>
             </div>
         </section>
+        <div class="filters">
+            <label for="filter-category">Categoria:</label>
+            <select id="filter-category" onchange="applyFilters()">
+                <option value="">Todas</option>
+            </select>
+            <label for="filter-date">Data:</label>
+            <input type="date" id="filter-date" onchange="applyFilters()">
+        </div>
         <table class="transactions-table">
             <thead>
                 <tr>
@@ -121,89 +151,139 @@
                 </tr>
             </tbody>
         </table>
-        <button onclick="addTransaction()">Adicionar Transação</button>
+        <div class="transaction-form">
+            <h3>Adicionar Nova Transação</h3>
+            <form id="transaction-form" onsubmit="addTransaction(event)">
+                <label for="transaction-date">Data:</label>
+                <input type="date" id="transaction-date" required>
+                <label for="transaction-description">Descrição:</label>
+                <input type="text" id="transaction-description" placeholder="Ex: Salário, Compras" required>
+                <label for="transaction-category">Categoria:</label>
+                <input type="text" id="transaction-category" placeholder="Ex: Alimentação, Transporte" required>
+                <label for="transaction-value">Valor (R$):</label>
+                <input type="number" id="transaction-value" step="0.01" required>
+                <button type="submit">Adicionar</button>
+            </form>
+        </div>
+        <div class="buttons">
+            <button onclick="exportToExcel()">Exportar para Excel</button>
+            <button onclick="exportToPDF()">Exportar para PDF</button>
+        </div>
     </div>
 
     <script>
-        const GITHUB_API_URL = 'https://api.github.com/repos/gu-lopes/finance-tracker-data/contents/transactions.json';
-        const GITHUB_TOKEN = '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';
+        const GITHUB_TOKEN = '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'; // Substitua pelo seu token GitHub
+        const REPO_OWNER = 'Gu-lopes'; // Substitua pelo seu nome de usuário ou organização
+        const REPO_NAME = 'gu-lopes.github.io'; // Substitua pelo nome do seu repositório
+        const FILE_PATH = 'transactions.json'; // Caminho para o arquivo JSON
 
         let transactions = [];
 
-        async function loadTransactions() {
-            try {
-                const response = await fetch(GITHUB_API_URL, {
-                    headers: {
-                        Authorization: `Bearer ${GITHUB_TOKEN}`
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const content = atob(data.content);
-                    transactions = JSON.parse(content);
-                    updateUI();
-                } else {
-                    console.error('Erro ao carregar dados:', response.statusText);
-                }
-            } catch (error) {
-                console.error('Erro ao carregar dados:', error);
-            }
-        }
-
-        async function saveTransactions() {
-            try {
-                const content = btoa(JSON.stringify(transactions, null, 2));
-                const response = await fetch(GITHUB_API_URL, {
-                    method: 'PUT',
-                    headers: {
-                        Authorization: `Bearer ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: 'Atualização de transações',
-                        content,
-                        sha: await getFileSHA()
-                    })
-                });
-
-                if (!response.ok) {
-                    console.error('Erro ao salvar dados:', response.statusText);
-                }
-            } catch (error) {
-                console.error('Erro ao salvar dados:', error);
-            }
-        }
-
-        async function getFileSHA() {
-            const response = await fetch(GITHUB_API_URL, {
+        // Função para carregar as transações do GitHub
+        async function loadTransactionsFromGitHub() {
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+            const response = await fetch(url, {
                 headers: {
-                    Authorization: `Bearer ${GITHUB_TOKEN}`
-                }
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.content) {
+                const content = atob(data.content); // Decodifica o conteúdo Base64
+                transactions = JSON.parse(content);
+            }
+            updateUI();
+        }
+
+        // Função para salvar transações no GitHub
+        async function saveTransactionsToGitHub() {
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+            const fileContent = JSON.stringify(transactions, null, 2); // Transforma o array de transações em JSON
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                },
+                body: JSON.stringify({
+                    message: 'Atualizando transações',
+                    content: btoa(fileContent), // Codifica o conteúdo para Base64
+                    sha: await getFileSha(), // Necessário para atualizar o arquivo
+                }),
             });
 
             if (response.ok) {
-                const data = await response.json();
-                return data.sha;
-            }
-
-            return null;
-        }
-
-        function addTransaction() {
-            const date = prompt('Data (YYYY-MM-DD):');
-            const description = prompt('Descrição:');
-            const category = prompt('Categoria:');
-            const value = parseFloat(prompt('Valor (use "-" para despesas):'));
-
-            if (!isNaN(value)) {
-                transactions.push({ date, description, category, value });
-                saveTransactions();
-                updateUI();
+                console.log('Dados salvos com sucesso no GitHub!');
             } else {
-                alert('Valor inválido!');
+                console.error('Erro ao salvar os dados no GitHub');
             }
         }
 
+        // Função para pegar o SHA do arquivo
+        async function getFileSha() {
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                },
+            });
+            const data = await response.json();
+            return data.sha;
+        }
+
+        // Função para adicionar uma transação
+        function addTransaction(event) {
+            event.preventDefault();
+            const date = document.getElementById('transaction-date').value;
+            const description = document.getElementById('transaction-description').value;
+            const category = document.getElementById('transaction-category').value;
+            const value = parseFloat(document.getElementById('transaction-value').value);
+
+            const newTransaction = {
+                date,
+                description,
+                category,
+                value,
+            };
+
+            transactions.push(newTransaction);
+            saveTransactionsToGitHub(); // Salva no GitHub
+
+            updateUI();
+            document.getElementById('transaction-form').reset();
+        }
+
+        // Função para atualizar a interface do usuário
         function updateUI() {
-            const tbody = document.ge
+            const transactionsBody = document.getElementById('transactions-body');
+            transactionsBody.innerHTML = '';
+
+            transactions.forEach(transaction => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${transaction.date}</td>
+                    <td>${transaction.description}</td>
+                    <td>${transaction.category}</td>
+                    <td>R$ ${transaction.value.toFixed(2)}</td>
+                `;
+                transactionsBody.appendChild(row);
+            });
+
+            // Atualizar as somas de receitas e despesas
+            const totalIncome = transactions.filter(t => t.value > 0).reduce((sum, t) => sum + t.value, 0);
+            const totalExpenses = transactions.filter(t => t.value < 0).reduce((sum, t) => sum + t.value, 0);
+            const totalBalance = totalIncome + totalExpenses;
+
+            document.getElementById('total-income').textContent = `R$ ${totalIncome.toFixed(2)}`;
+            document.getElementById('total-expenses').textContent = `R$ ${totalExpenses.toFixed(2)}`;
+            document.getElementById('total-balance').textContent = `R$ ${totalBalance.toFixed(2)}`;
+        }
+
+        // Carregar as transações ao carregar a página
+        window.onload = loadTransactionsFromGitHub;
+    </script>
+</body>
+</html>

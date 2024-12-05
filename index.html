@@ -7,45 +7,103 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.6.0/jspdf.umd.min.js"></script>
     <style>
-        /* Estilos do layout */
-        table.transactions-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        /* Estilos básicos para garantir o layout correto */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
-        table.transactions-table th, table.transactions-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
         }
-        table.transactions-table th {
-            background-color: #f2f2f2;
+
+        .container {
+            margin: 20px;
         }
-        table.transactions-table tr:nth-child(even) {
-            background-color: #f9f9f9;
+
+        /* Estilo para a seção de resumo */
+        .summary {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
         }
-        table.transactions-table tr:hover {
-            background-color: #ddd;
+
+        .summary div {
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 30%;
         }
 
         .filters {
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
-            margin-top: 20px;
+            margin-bottom: 20px;
         }
-        .filters label {
-            font-weight: bold;
-        }
-        .filters input, .filters select {
-            padding: 5px;
+
+        .filters label,
+        .filters input,
+        .filters select {
             font-size: 14px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
+            padding: 8px;
             border-radius: 4px;
         }
-        .filters input[type="date"] {
+
+        .filters input[type="date"],
+        .filters input[type="number"] {
             width: 150px;
+        }
+
+        /* Estilos para a tabela de transações */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:hover {
+            background-color: #ddd;
+        }
+
+        /* Estilos dos botões de exportação */
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
@@ -54,6 +112,7 @@
         <h1>Financial Tracker</h1>
     </header>
     <div class="container">
+        <!-- Seção de resumo -->
         <section class="summary">
             <div>
                 <h2>Saldo Total</h2>
@@ -68,21 +127,29 @@
                 <p id="total-expenses">R$ 0,00</p>
             </div>
         </section>
+
+        <!-- Filtros -->
         <div class="filters">
             <label for="filter-category">Categoria:</label>
             <select id="filter-category" onchange="applyFilters()">
                 <option value="">Todas</option>
             </select>
+
             <label for="filter-start-date">Data Início:</label>
             <input type="date" id="filter-start-date" onchange="applyFilters()">
+
             <label for="filter-end-date">Data Fim:</label>
             <input type="date" id="filter-end-date" onchange="applyFilters()">
+
             <label for="filter-min-value">Valor Mínimo:</label>
             <input type="number" id="filter-min-value" step="0.01" onchange="applyFilters()">
+
             <label for="filter-max-value">Valor Máximo:</label>
             <input type="number" id="filter-max-value" step="0.01" onchange="applyFilters()">
         </div>
-        <table class="transactions-table">
+
+        <!-- Tabela de transações -->
+        <table>
             <thead>
                 <tr>
                     <th>Data</th>
@@ -95,6 +162,8 @@
                 <!-- Transações serão exibidas aqui -->
             </tbody>
         </table>
+
+        <!-- Botões de exportação -->
         <button onclick="exportToExcel()">Exportar para Excel</button>
         <button onclick="exportToPDF()">Exportar para PDF</button>
     </div>
@@ -107,6 +176,7 @@
             { date: "2024-12-04", description: "Venda de curso online", category: "Vendas", value: 800 },
         ];
 
+        // Função para aplicar os filtros
         function applyFilters() {
             const filterCategory = document.getElementById('filter-category').value;
             const filterStartDate = document.getElementById('filter-start-date').value;
@@ -129,6 +199,7 @@
             updateTransactionTable(filteredTransactions);
         }
 
+        // Função para atualizar a tabela de transações
         function updateTransactionTable(filteredTransactions) {
             const tbody = document.getElementById('transactions-body');
             tbody.innerHTML = "";
@@ -151,6 +222,7 @@
             updateSummary(filteredTransactions);
         }
 
+        // Função para atualizar o resumo
         function updateSummary(filteredTransactions) {
             let totalIncome = 0;
             let totalExpenses = 0;
@@ -168,6 +240,7 @@
             document.getElementById('total-balance').textContent = 'R$ ' + (totalIncome - totalExpenses).toFixed(2);
         }
 
+        // Função para exportar para Excel
         function exportToExcel() {
             const ws = XLSX.utils.json_to_sheet(transactions);
             const wb = XLSX.utils.book_new();
@@ -175,6 +248,7 @@
             XLSX.writeFile(wb, "transacoes.xlsx");
         }
 
+        // Função para exportar para PDF
         function exportToPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();

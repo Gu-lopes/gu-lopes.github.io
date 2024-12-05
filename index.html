@@ -251,6 +251,10 @@
             }
         }
 
+        function applyFilters() {
+            updateUI();
+        }
+
         function exportToExcel() {
             const ws = XLSX.utils.json_to_sheet(transactions);
             const wb = XLSX.utils.book_new();
@@ -263,7 +267,12 @@
             const doc = new jsPDF();
 
             doc.text("Relatório Financeiro", 20, 20);
-            doc.autoTable({ html: '.transactions-table' });
+
+            const table = transactions.map(t => [t.date, t.description, t.category, 'R$ ' + t.value.toFixed(2)]);
+            doc.autoTable({
+                head: [['Data', 'Descrição', 'Categoria', 'Valor']],
+                body: table
+            });
 
             doc.save("relatorio_financeiro.pdf");
         }

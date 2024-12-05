@@ -1,132 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Tracker</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.6.0/jspdf.umd.min.js"></script>
     <style>
-        /* Estilos básicos para garantir o layout correto */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background-color: #f4f4f9;
         }
-
         header {
-            background-color: #333;
+            background-color: #4CAF50;
             color: white;
             padding: 10px 20px;
             text-align: center;
         }
-
         .container {
             margin: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        /* Estilo para a seção de resumo */
         .summary {
             display: flex;
             justify-content: space-around;
             margin-bottom: 20px;
         }
-
         .summary div {
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             text-align: center;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
             width: 30%;
         }
-
         .filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
             margin-bottom: 20px;
         }
-
-        .filters label,
-        .filters input,
-        .filters select {
-            font-size: 14px;
-            padding: 8px;
+        .filters input, .filters select {
+            padding: 5px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
             border-radius: 4px;
         }
-
-        .filters input[type="date"],
-        .filters input[type="number"] {
-            width: 150px;
-        }
-
-        /* Estilos para a tabela de transações */
-        table {
+        .transactions-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #fff;
-            border-radius: 5px;
-            overflow: hidden;
+            margin: 20px 0;
         }
-
-        table th,
-        table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+        .transactions-table th, .transactions-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
         }
-
-        table th {
-            background-color: #f2f2f2;
-        }
-
-        table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        table tr:hover {
-            background-color: #ddd;
-        }
-
-        /* Estilos dos botões de exportação */
-        button {
+        .transactions-table th {
             background-color: #4CAF50;
             color: white;
+        }
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .buttons button {
             padding: 10px 20px;
+            margin-left: 10px;
             border: none;
-            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 8px;
             cursor: pointer;
-            margin-top: 20px;
         }
-
-        button:hover {
-            background-color: #45a049;
+        .buttons button:hover {
+            background: #45a049;
         }
-
-        /* Estilo da aba de adicionar transação */
-        .add-transaction-form {
-            background-color: #fff;
+        .transaction-form {
+            margin: 20px 0;
             padding: 20px;
-            margin-top: 20px;
-            border-radius: 5px;
+            background: #f9f9f9;
+            border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
-        .add-transaction-form input,
-        .add-transaction-form select,
-        .add-transaction-form textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+        .transaction-form h3 {
+            margin-bottom: 15px;
         }
-
-        .add-transaction-form button {
-            width: 100%;
+        .transaction-form form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .transaction-form input,
+        .transaction-form button {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .transaction-form button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        .transaction-form button:hover {
+            background: #45a049;
         }
     </style>
 </head>
@@ -135,7 +114,6 @@
         <h1>Financial Tracker</h1>
     </header>
     <div class="container">
-        <!-- Seção de resumo -->
         <section class="summary">
             <div>
                 <h2>Saldo Total</h2>
@@ -150,29 +128,16 @@
                 <p id="total-expenses">R$ 0,00</p>
             </div>
         </section>
-
-        <!-- Filtros -->
         <div class="filters">
             <label for="filter-category">Categoria:</label>
             <select id="filter-category" onchange="applyFilters()">
                 <option value="">Todas</option>
+                <!-- As opções de categorias serão adicionadas aqui -->
             </select>
-
-            <label for="filter-start-date">Data Início:</label>
-            <input type="date" id="filter-start-date" onchange="applyFilters()">
-
-            <label for="filter-end-date">Data Fim:</label>
-            <input type="date" id="filter-end-date" onchange="applyFilters()">
-
-            <label for="filter-min-value">Valor Mínimo:</label>
-            <input type="number" id="filter-min-value" step="0.01" onchange="applyFilters()">
-
-            <label for="filter-max-value">Valor Máximo:</label>
-            <input type="number" id="filter-max-value" step="0.01" onchange="applyFilters()">
+            <label for="filter-date">Data:</label>
+            <input type="date" id="filter-date" onchange="applyFilters()">
         </div>
-
-        <!-- Tabela de transações -->
-        <table>
+        <table class="transactions-table">
             <thead>
                 <tr>
                     <th>Data</th>
@@ -182,142 +147,138 @@
                 </tr>
             </thead>
             <tbody id="transactions-body">
-                <!-- Transações serão exibidas aqui -->
+                <tr>
+                    <td colspan="4">Nenhuma transação registrada</td>
+                </tr>
             </tbody>
         </table>
-
-        <!-- Botões de exportação -->
-        <button onclick="exportToExcel()">Exportar para Excel</button>
-        <button onclick="exportToPDF()">Exportar para PDF</button>
-
-        <!-- Formulário de adicionar transação -->
-        <div class="add-transaction-form">
-            <h2>Adicionar Transação</h2>
-            <form id="add-transaction-form" onsubmit="addTransaction(event)">
+        <div class="transaction-form">
+            <h3>Adicionar Nova Transação</h3>
+            <form id="transaction-form" onsubmit="addTransaction(event)">
+                <label for="transaction-date">Data:</label>
                 <input type="date" id="transaction-date" required>
-                <input type="text" id="transaction-description" placeholder="Descrição" required>
+                <label for="transaction-description">Descrição:</label>
+                <input type="text" id="transaction-description" placeholder="Ex: Salário, Compras" required>
+                <label for="transaction-category">Categoria:</label>
                 <select id="transaction-category" required>
-                    <option value="">Escolha a Categoria</option>
+                    <option value="Receita">Receita</option>
+                    <option value="Despesa">Despesa</option>
                 </select>
-                <input type="number" id="transaction-value" placeholder="Valor" step="0.01" required>
-                <button type="submit">Adicionar Transação</button>
+                <label for="transaction-value">Valor (R$):</label>
+                <input type="number" id="transaction-value" step="0.01" required>
+                <button type="submit">Adicionar</button>
             </form>
+        </div>
+        <div class="buttons">
+            <button onclick="exportToExcel()">Exportar para Excel</button>
+            <button onclick="exportToPDF()">Exportar para PDF</button>
         </div>
     </div>
 
     <script>
-        // Dados fictícios de transações
-        const transactions = [
-            { date: "2024-12-01", description: "Compra de Mercado", category: "Alimentação", value: -150 },
-            { date: "2024-12-02", description: "Venda de produto", category: "Vendas", value: 500 },
-            { date: "2024-12-03", description: "Pagamento de aluguel", category: "Moradia", value: -1200 },
-            { date: "2024-12-04", description: "Venda de curso online", category: "Vendas", value: 800 },
-        ];
+        const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 
-        // Função para preencher o filtro de categoria
-        function fillCategoryFilter() {
-            const categories = [...new Set(transactions.map(t => t.category))]; // Extrair categorias únicas
-            const select = document.getElementById('filter-category');
+        function updateUI() {
+            const tbody = document.getElementById('transactions-body');
+            tbody.innerHTML = "";
+            const filterCategory = document.getElementById('filter-category').value;
+            const filterDate = document.getElementById('filter-date').value;
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            let filteredTransactions = transactions;
+
+            if (filterCategory) {
+                filteredTransactions = filteredTransactions.filter(t => t.category === filterCategory);
+            }
+            if (filterDate) {
+                filteredTransactions = filteredTransactions.filter(t => t.date === filterDate);
+            }
+
+            if (filteredTransactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Nenhuma transação encontrada</td></tr>';
+            } else {
+                filteredTransactions.forEach((transaction) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${transaction.date}</td>
+                        <td>${transaction.description}</td>
+                        <td>${transaction.category}</td>
+                        <td>${transaction.value > 0 ? 'R$ ' + transaction.value.toFixed(2) : '-R$ ' + Math.abs(transaction.value).toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(row);
+
+                    if (transaction.value > 0) {
+                        totalIncome += transaction.value;
+                    } else {
+                        totalExpenses += Math.abs(transaction.value);
+                    }
+                });
+            }
+
+            document.getElementById('total-income').textContent = 'R$ ' + totalIncome.toFixed(2);
+            document.getElementById('total-expenses').textContent = 'R$ ' + totalExpenses.toFixed(2);
+            document.getElementById('total-balance').textContent = 'R$ ' + (totalIncome - totalExpenses).toFixed(2);
+
+            updateFilterOptions();
+        }
+
+        function updateFilterOptions() {
+            const categorySelect = document.getElementById('filter-category');
+            const uniqueCategories = [...new Set(transactions.map(t => t.category))];
+            categorySelect.innerHTML = '<option value="">Todas</option>';
+
+            // Adicionar categorias fixas de Receita e Despesa, se ainda não existirem
+            const categories = ['Receita', 'Despesa', ...uniqueCategories];
             categories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
                 option.textContent = category;
-                select.appendChild(option);
+                categorySelect.appendChild(option);
             });
         }
 
-        // Função para aplicar filtros
-        function applyFilters() {
-            const filterCategory = document.getElementById('filter-category').value;
-            const filterStartDate = document.getElementById('filter-start-date').value;
-            const filterEndDate = document.getElementById('filter-end-date').value;
-            const filterMinValue = parseFloat(document.getElementById('filter-min-value').value) || -Infinity;
-            const filterMaxValue = parseFloat(document.getElementById('filter-max-value').value) || Infinity;
-
-            let filteredTransactions = transactions.filter(t => {
-                const transactionDate = new Date(t.date);
-                const startDate = new Date(filterStartDate);
-                const endDate = new Date(filterEndDate);
-                const isCategoryMatch = filterCategory ? t.category === filterCategory : true;
-                const isDateMatch = (filterStartDate ? transactionDate >= startDate : true) && 
-                                    (filterEndDate ? transactionDate <= endDate : true);
-                const isValueMatch = t.value >= filterMinValue && t.value <= filterMaxValue;
-
-                return isCategoryMatch && isDateMatch && isValueMatch;
-            });
-
-            updateTransactionTable(filteredTransactions);
-        }
-
-        // Função para adicionar uma transação
         function addTransaction(event) {
             event.preventDefault();
+
             const date = document.getElementById('transaction-date').value;
             const description = document.getElementById('transaction-description').value;
             const category = document.getElementById('transaction-category').value;
             const value = parseFloat(document.getElementById('transaction-value').value);
 
-            if (date && description && category && !isNaN(value)) {
-                transactions.push({ date, description, category, value });
-                applyFilters();
-                document.getElementById('add-transaction-form').reset();
+            if (!date || !description || !category || isNaN(value)) {
+                alert("Por favor, preencha todos os campos corretamente.");
+                return;
             }
+
+            const newTransaction = {
+                date,
+                description,
+                category,
+                value
+            };
+
+            transactions.push(newTransaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateUI();
+
+            document.getElementById('transaction-form').reset();
         }
 
-        // Função para atualizar a tabela de transações
-        function updateTransactionTable(filteredTransactions) {
-            const tbody = document.getElementById('transactions-body');
-            tbody.innerHTML = "";
-            filteredTransactions.forEach(t => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${t.date}</td>
-                    <td>${t.description}</td>
-                    <td>${t.category}</td>
-                    <td>${t.value.toFixed(2)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            // Atualizar o resumo
-            const totalBalance = filteredTransactions.reduce((sum, t) => sum + t.value, 0);
-            const totalIncome = filteredTransactions.filter(t => t.value > 0).reduce((sum, t) => sum + t.value, 0);
-            const totalExpenses = filteredTransactions.filter(t => t.value < 0).reduce((sum, t) => sum + t.value, 0);
-
-            document.getElementById('total-balance').textContent = `R$ ${totalBalance.toFixed(2)}`;
-            document.getElementById('total-income').textContent = `R$ ${totalIncome.toFixed(2)}`;
-            document.getElementById('total-expenses').textContent = `R$ ${totalExpenses.toFixed(2)}`;
+        function applyFilters() {
+            updateUI();
         }
 
-        // Função para exportar para Excel
         function exportToExcel() {
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(transactions);
-            XLSX.utils.book_append_sheet(wb, ws, "Transações");
-            XLSX.writeFile(wb, "transacoes.xlsx");
+            // Lógica para exportar para Excel
         }
 
-        // Função para exportar para PDF
         function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            let y = 10;
-            doc.text("Transações Financeiras", 10, y);
-            y += 10;
-            transactions.forEach(t => {
-                doc.text(`${t.date} - ${t.description} - ${t.category} - R$ ${t.value.toFixed(2)}`, 10, y);
-                y += 10;
-            });
-
-            doc.save("transacoes.pdf");
+            // Lógica para exportar para PDF
         }
 
-        // Inicializar
-        window.onload = () => {
-            fillCategoryFilter();
-            applyFilters();
-        };
+        // Atualiza a UI na inicialização
+        updateUI();
     </script>
 </body>
 </html>

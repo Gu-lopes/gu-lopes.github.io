@@ -1,11 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Tracker</title>
     <style>
-        /* Mesmos estilos que você já tem */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .container {
+            margin: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .summary div {
+            text-align: center;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            width: 30%;
+        }
+
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .transactions-table th,
+        .transactions-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .transactions-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        @media (max-width: 768px) {
+            .summary {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .summary div {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -27,7 +106,6 @@
                 <p id="total-expenses">R$ 0,00</p>
             </div>
         </section>
-        <button onclick="addTransaction()">Adicionar Transação</button>
         <table class="transactions-table">
             <thead>
                 <tr>
@@ -39,10 +117,11 @@
             </thead>
             <tbody id="transactions-body">
                 <tr>
-                    <td colspan="4">Carregando...</td>
+                    <td colspan="4">Nenhuma transação registrada</td>
                 </tr>
             </tbody>
         </table>
+        <button onclick="addTransaction()">Adicionar Transação</button>
     </div>
 
     <script>
@@ -51,77 +130,80 @@
 
         let transactions = [];
 
-        async function fetchTransactions() {
-            const response = await fetch(GITHUB_API_URL, {
-                headers: {
-                    Authorization: `token ${GITHUB_TOKEN}`,
-                },
-            });
-            const data = await response.json();
-            const content = atob(data.content);
-            transactions = JSON.parse(content);
-            updateUI();
-        }
+        async function loadTransactions() {
+            try {
+                const response = await fetch(GITHUB_API_URL, {
+                    headers: {
+                        Authorization: `Bearer ${GITHUB_TOKEN}`
+                    }
+                });
 
-        async function saveTransactions() {
-            const response = await fetch(GITHUB_API_URL, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `token ${GITHUB_TOKEN}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: 'Atualizando transações',
-                    content: btoa(JSON.stringify(transactions)),
-                    sha: await getSHA(),
-                }),
-            });
-            if (!response.ok) {
-                alert('Erro ao salvar transações no GitHub.');
+                if (response.ok) {
+                    const data = await response.json();
+                    const content = atob(data.content);
+                    transactions = JSON.parse(content);
+                    updateUI();
+                } else {
+                    console.error('Erro ao carregar dados:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
             }
         }
 
-        async function getSHA() {
-            const response = await fetch(GITHUB_API_URL, {
-                headers: {
-                    Authorization: `token ${GITHUB_TOKEN}`,
-                },
-            });
-            const data = await response.json();
-            return data.sha;
+        async function saveTransactions() {
+            try {
+                const content = btoa(JSON.stringify(transactions, null, 2));
+                const response = await fetch(GITHUB_API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Atualização de transações',
+                        content,
+                        sha: await getFileSHA()
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error('Erro ao salvar dados:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar dados:', error);
+            }
         }
 
-        function updateUI() {
-            const tbody = document.getElementById('transactions-body');
-            tbody.innerHTML = transactions.map(transaction => `
-                <tr>
-                    <td>${transaction.date}</td>
-                    <td>${transaction.description}</td>
-                    <td>${transaction.category}</td>
-                    <td>R$ ${transaction.value.toFixed(2)}</td>
-                </tr>
-            `).join('') || '<tr><td colspan="4">Nenhuma transação registrada</td></tr>';
+        async function getFileSHA() {
+            const response = await fetch(GITHUB_API_URL, {
+                headers: {
+                    Authorization: `Bearer ${GITHUB_TOKEN}`
+                }
+            });
 
-            const totalIncome = transactions.filter(t => t.value > 0).reduce((sum, t) => sum + t.value, 0);
-            const totalExpenses = transactions.filter(t => t.value < 0).reduce((sum, t) => sum + Math.abs(t.value), 0);
-            document.getElementById('total-income').textContent = `R$ ${totalIncome.toFixed(2)}`;
-            document.getElementById('total-expenses').textContent = `R$ ${totalExpenses.toFixed(2)}`;
-            document.getElementById('total-balance').textContent = `R$ ${(totalIncome - totalExpenses).toFixed(2)}`;
+            if (response.ok) {
+                const data = await response.json();
+                return data.sha;
+            }
+
+            return null;
         }
 
         function addTransaction() {
-            const newTransaction = {
-                date: prompt('Data (YYYY-MM-DD):'),
-                description: prompt('Descrição:'),
-                category: prompt('Categoria:'),
-                value: parseFloat(prompt('Valor:')),
-            };
-            transactions.push(newTransaction);
-            saveTransactions();
-            updateUI();
+            const date = prompt('Data (YYYY-MM-DD):');
+            const description = prompt('Descrição:');
+            const category = prompt('Categoria:');
+            const value = parseFloat(prompt('Valor (use "-" para despesas):'));
+
+            if (!isNaN(value)) {
+                transactions.push({ date, description, category, value });
+                saveTransactions();
+                updateUI();
+            } else {
+                alert('Valor inválido!');
+            }
         }
 
-        fetchTransactions();
-    </script>
-</body>
-</html>
+        function updateUI() {
+            const tbody = document.ge

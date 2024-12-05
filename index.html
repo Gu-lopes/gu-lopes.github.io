@@ -171,8 +171,6 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 
@@ -223,10 +221,9 @@
 
         function updateFilterOptions() {
             const categorySelect = document.getElementById('filter-category');
-            const categories = [...new Set(transactions.map(t => t.category))];
-
+            const uniqueCategories = [...new Set(transactions.map(t => t.category))];
             categorySelect.innerHTML = '<option value="">Todas</option>';
-            categories.forEach((category) => {
+            uniqueCategories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
                 option.textContent = category;
@@ -242,39 +239,35 @@
             const category = document.getElementById('transaction-category').value;
             const value = parseFloat(document.getElementById('transaction-value').value);
 
-            if (date && description && category && value) {
-                const newTransaction = { date, description, category, value };
-                transactions.push(newTransaction);
-                localStorage.setItem('transactions', JSON.stringify(transactions));
-                updateUI();
-                document.getElementById('transaction-form').reset();
+            if (!date || !description || !category || isNaN(value)) {
+                alert("Por favor, preencha todos os campos corretamente.");
+                return;
             }
+
+            const newTransaction = {
+                date,
+                description,
+                category,
+                value
+            };
+
+            transactions.push(newTransaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateUI();
+
+            document.getElementById('transaction-form').reset();
+        }
+
+        function exportToExcel() {
+            alert('Exportação para Excel ainda não implementada.');
+        }
+
+        function exportToPDF() {
+            alert('Exportação para PDF ainda não implementada.');
         }
 
         function applyFilters() {
             updateUI();
-        }
-
-        function exportToExcel() {
-            const ws = XLSX.utils.json_to_sheet(transactions);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Transações");
-            XLSX.writeFile(wb, "transacoes.xlsx");
-        }
-
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.text("Relatório Financeiro", 20, 20);
-
-            const table = transactions.map(t => [t.date, t.description, t.category, 'R$ ' + t.value.toFixed(2)]);
-            doc.autoTable({
-                head: [['Data', 'Descrição', 'Categoria', 'Valor']],
-                body: table
-            });
-
-            doc.save("relatorio_financeiro.pdf");
         }
 
         updateUI();

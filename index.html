@@ -1,112 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.6.0/jspdf.umd.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-        }
-        header {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-        }
-        .container {
-            margin: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .summary {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 20px;
-        }
-        .summary div {
-            text-align: center;
-            padding: 10px;
-            background: #e8f5e9;
-            border-radius: 8px;
-            width: 30%;
-        }
-        .filters {
-            margin-bottom: 20px;
-        }
-        .filters input, .filters select {
-            padding: 5px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .transactions-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .transactions-table th, .transactions-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        .transactions-table th {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .buttons {
-            margin-top: 20px;
-            display: flex;
-            justify-content: flex-end;
-        }
-        .buttons button {
-            padding: 10px 20px;
-            margin-left: 10px;
-            border: none;
-            background: #4CAF50;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .buttons button:hover {
-            background: #45a049;
-        }
-        .transaction-form {
-            margin: 20px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .transaction-form h3 {
-            margin-bottom: 15px;
-        }
-        .transaction-form form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .transaction-form input,
-        .transaction-form button {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .transaction-form button {
-            background: #4CAF50;
-            color: white;
-            cursor: pointer;
-            border: none;
-        }
-        .transaction-form button:hover {
-            background: #45a049;
-        }
+        /* Estilos... */
     </style>
 </head>
 <body>
@@ -259,15 +160,31 @@
         }
 
         function exportToExcel() {
-            alert('Exportação para Excel ainda não implementada.');
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(transactions.map(t => ({
+                Data: t.date,
+                Descrição: t.description,
+                Categoria: t.category,
+                Valor: t.value > 0 ? 'R$ ' + t.value.toFixed(2) : '-R$ ' + Math.abs(t.value).toFixed(2)
+            })));
+
+            XLSX.utils.book_append_sheet(wb, ws, "Transações");
+            XLSX.writeFile(wb, "transacoes.xlsx");
         }
 
         function exportToPDF() {
-            alert('Exportação para PDF ainda não implementada.');
-        }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFont("helvetica", "normal");
+            doc.text("Relatório de Transações", 14, 10);
 
-        function applyFilters() {
-            updateUI();
+            let yOffset = 20;
+            transactions.forEach((t) => {
+                doc.text(`Data: ${t.date} | Descrição: ${t.description} | Categoria: ${t.category} | Valor: ${t.value > 0 ? 'R$ ' + t.value.toFixed(2) : '-R$ ' + Math.abs(t.value).toFixed(2)}`, 14, yOffset);
+                yOffset += 10;
+            });
+
+            doc.save('transacoes.pdf');
         }
 
         updateUI();

@@ -7,7 +7,46 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.6.0/jspdf.umd.min.js"></script>
     <style>
-        /* Estilos... */
+        /* Estilos do layout */
+        table.transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table.transactions-table th, table.transactions-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        table.transactions-table th {
+            background-color: #f2f2f2;
+        }
+        table.transactions-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        table.transactions-table tr:hover {
+            background-color: #ddd;
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .filters label {
+            font-weight: bold;
+        }
+        .filters input, .filters select {
+            padding: 5px;
+            font-size: 14px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .filters input[type="date"] {
+            width: 150px;
+        }
     </style>
 </head>
 <body>
@@ -34,8 +73,14 @@
             <select id="filter-category" onchange="applyFilters()">
                 <option value="">Todas</option>
             </select>
-            <label for="filter-date">Data:</label>
-            <input type="date" id="filter-date" onchange="applyFilters()">
+            <label for="filter-start-date">Data Início:</label>
+            <input type="date" id="filter-start-date" onchange="applyFilters()">
+            <label for="filter-end-date">Data Fim:</label>
+            <input type="date" id="filter-end-date" onchange="applyFilters()">
+            <label for="filter-min-value">Valor Mínimo:</label>
+            <input type="number" id="filter-min-value" step="0.01" onchange="applyFilters()">
+            <label for="filter-max-value">Valor Máximo:</label>
+            <input type="number" id="filter-max-value" step="0.01" onchange="applyFilters()">
         </div>
         <table class="transactions-table">
             <thead>
@@ -47,50 +92,46 @@
                 </tr>
             </thead>
             <tbody id="transactions-body">
-                <tr>
-                    <td colspan="4">Nenhuma transação registrada</td>
-                </tr>
+                <!-- Transações serão exibidas aqui -->
             </tbody>
         </table>
-        <div class="transaction-form">
-            <h3>Adicionar Nova Transação</h3>
-            <form id="transaction-form" onsubmit="addTransaction(event)">
-                <label for="transaction-date">Data:</label>
-                <input type="date" id="transaction-date" required>
-                <label for="transaction-description">Descrição:</label>
-                <input type="text" id="transaction-description" placeholder="Ex: Salário, Compras" required>
-                <label for="transaction-category">Categoria:</label>
-                <input type="text" id="transaction-category" placeholder="Ex: Alimentação, Transporte" required>
-                <label for="transaction-value">Valor (R$):</label>
-                <input type="number" id="transaction-value" step="0.01" required>
-                <button type="submit">Adicionar</button>
-            </form>
-        </div>
-        <div class="buttons">
-            <button onclick="exportToExcel()">Exportar para Excel</button>
-            <button onclick="exportToPDF()">Exportar para PDF</button>
-        </div>
+        <button onclick="exportToExcel()">Exportar para Excel</button>
+        <button onclick="exportToPDF()">Exportar para PDF</button>
     </div>
 
     <script>
-        const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        const transactions = [
+            { date: "2024-12-01", description: "Compra de Mercado", category: "Alimentação", value: -150 },
+            { date: "2024-12-02", description: "Venda de produto", category: "Vendas", value: 500 },
+            { date: "2024-12-03", description: "Pagamento de aluguel", category: "Moradia", value: -1200 },
+            { date: "2024-12-04", description: "Venda de curso online", category: "Vendas", value: 800 },
+        ];
 
-        function updateUI() {
+        function applyFilters() {
+            const filterCategory = document.getElementById('filter-category').value;
+            const filterStartDate = document.getElementById('filter-start-date').value;
+            const filterEndDate = document.getElementById('filter-end-date').value;
+            const filterMinValue = parseFloat(document.getElementById('filter-min-value').value) || -Infinity;
+            const filterMaxValue = parseFloat(document.getElementById('filter-max-value').value) || Infinity;
+
+            let filteredTransactions = transactions.filter(t => {
+                const transactionDate = new Date(t.date);
+                const startDate = new Date(filterStartDate);
+                const endDate = new Date(filterEndDate);
+                const isCategoryMatch = filterCategory ? t.category === filterCategory : true;
+                const isDateMatch = (filterStartDate ? transactionDate >= startDate : true) && 
+                                    (filterEndDate ? transactionDate <= endDate : true);
+                const isValueMatch = t.value >= filterMinValue && t.value <= filterMaxValue;
+
+                return isCategoryMatch && isDateMatch && isValueMatch;
+            });
+
+            updateTransactionTable(filteredTransactions);
+        }
+
+        function updateTransactionTable(filteredTransactions) {
             const tbody = document.getElementById('transactions-body');
             tbody.innerHTML = "";
-            const filterCategory = document.getElementById('filter-category').value;
-            const filterDate = document.getElementById('filter-date').value;
-
-            let totalIncome = 0;
-            let totalExpenses = 0;
-            let filteredTransactions = transactions;
-
-            if (filterCategory) {
-                filteredTransactions = filteredTransactions.filter(t => t.category === filterCategory);
-            }
-            if (filterDate) {
-                filteredTransactions = filteredTransactions.filter(t => t.date === filterDate);
-            }
 
             if (filteredTransactions.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4">Nenhuma transação encontrada</td></tr>';
@@ -104,70 +145,32 @@
                         <td>${transaction.value > 0 ? 'R$ ' + transaction.value.toFixed(2) : '-R$ ' + Math.abs(transaction.value).toFixed(2)}</td>
                     `;
                     tbody.appendChild(row);
-
-                    if (transaction.value > 0) {
-                        totalIncome += transaction.value;
-                    } else {
-                        totalExpenses += Math.abs(transaction.value);
-                    }
                 });
             }
+
+            updateSummary(filteredTransactions);
+        }
+
+        function updateSummary(filteredTransactions) {
+            let totalIncome = 0;
+            let totalExpenses = 0;
+
+            filteredTransactions.forEach((transaction) => {
+                if (transaction.value > 0) {
+                    totalIncome += transaction.value;
+                } else {
+                    totalExpenses += Math.abs(transaction.value);
+                }
+            });
 
             document.getElementById('total-income').textContent = 'R$ ' + totalIncome.toFixed(2);
             document.getElementById('total-expenses').textContent = 'R$ ' + totalExpenses.toFixed(2);
             document.getElementById('total-balance').textContent = 'R$ ' + (totalIncome - totalExpenses).toFixed(2);
-
-            updateFilterOptions();
-        }
-
-        function updateFilterOptions() {
-            const categorySelect = document.getElementById('filter-category');
-            const uniqueCategories = [...new Set(transactions.map(t => t.category))];
-            categorySelect.innerHTML = '<option value="">Todas</option>';
-            uniqueCategories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                categorySelect.appendChild(option);
-            });
-        }
-
-        function addTransaction(event) {
-            event.preventDefault();
-
-            const date = document.getElementById('transaction-date').value;
-            const description = document.getElementById('transaction-description').value;
-            const category = document.getElementById('transaction-category').value;
-            const value = parseFloat(document.getElementById('transaction-value').value);
-
-            if (!date || !description || !category || isNaN(value)) {
-                alert("Por favor, preencha todos os campos corretamente.");
-                return;
-            }
-
-            const newTransaction = {
-                date,
-                description,
-                category,
-                value
-            };
-
-            transactions.push(newTransaction);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            updateUI();
-
-            document.getElementById('transaction-form').reset();
         }
 
         function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(transactions);
             const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(transactions.map(t => ({
-                Data: t.date,
-                Descrição: t.description,
-                Categoria: t.category,
-                Valor: t.value > 0 ? 'R$ ' + t.value.toFixed(2) : '-R$ ' + Math.abs(t.value).toFixed(2)
-            })));
-
             XLSX.utils.book_append_sheet(wb, ws, "Transações");
             XLSX.writeFile(wb, "transacoes.xlsx");
         }
@@ -187,7 +190,7 @@
             doc.save('transacoes.pdf');
         }
 
-        updateUI();
+        updateTransactionTable(transactions);
     </script>
 </body>
 </html>

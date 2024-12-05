@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -107,6 +108,11 @@
         .transaction-form button:hover {
             background: #45a049;
         }
+        .chart-container {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -132,10 +138,11 @@
             <label for="filter-category">Categoria:</label>
             <select id="filter-category" onchange="applyFilters()">
                 <option value="">Todas</option>
-                <!-- As opções de categorias serão adicionadas aqui -->
             </select>
             <label for="filter-date">Data:</label>
             <input type="date" id="filter-date" onchange="applyFilters()">
+            <label for="filter-month">Mês:</label>
+            <input type="month" id="filter-month" onchange="applyFilters()">
         </div>
         <table class="transactions-table">
             <thead>
@@ -160,10 +167,7 @@
                 <label for="transaction-description">Descrição:</label>
                 <input type="text" id="transaction-description" placeholder="Ex: Salário, Compras" required>
                 <label for="transaction-category">Categoria:</label>
-                <select id="transaction-category" required>
-                    <option value="Receita">Receita</option>
-                    <option value="Despesa">Despesa</option>
-                </select>
+                <input type="text" id="transaction-category" placeholder="Ex: Alimentação, Transporte" required>
                 <label for="transaction-value">Valor (R$):</label>
                 <input type="number" id="transaction-value" step="0.01" required>
                 <button type="submit">Adicionar</button>
@@ -173,19 +177,23 @@
             <button onclick="exportToExcel()">Exportar para Excel</button>
             <button onclick="exportToPDF()">Exportar para PDF</button>
         </div>
+
+        <div class="chart-container">
+            <canvas id="financialChart" width="400" height="200"></canvas>
+        </div>
     </div>
 
     <script>
         const transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 
+        // Função para atualizar a interface e aplicar os filtros
         function updateUI() {
             const tbody = document.getElementById('transactions-body');
             tbody.innerHTML = "";
             const filterCategory = document.getElementById('filter-category').value;
             const filterDate = document.getElementById('filter-date').value;
+            const filterMonth = document.getElementById('filter-month').value;
 
-            let totalIncome = 0;
-            let totalExpenses = 0;
             let filteredTransactions = transactions;
 
             if (filterCategory) {
@@ -194,7 +202,12 @@
             if (filterDate) {
                 filteredTransactions = filteredTransactions.filter(t => t.date === filterDate);
             }
+            if (filterMonth) {
+                filteredTransactions = filteredTransactions.filter(t => t.date.startsWith(filterMonth));  // Filtro por mês
+            }
 
+            let totalIncome = 0;
+            let totalExpenses = 0;
             if (filteredTransactions.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4">Nenhuma transação encontrada</td></tr>';
             } else {
@@ -220,27 +233,62 @@
             document.getElementById('total-expenses').textContent = 'R$ ' + totalExpenses.toFixed(2);
             document.getElementById('total-balance').textContent = 'R$ ' + (totalIncome - totalExpenses).toFixed(2);
 
+            updateChart(totalIncome, totalExpenses);
             updateFilterOptions();
         }
 
-        function updateFilterOptions() {
-            const categorySelect = document.getElementById('filter-category');
-            const uniqueCategories = [...new Set(transactions.map(t => t.category))];
-            categorySelect.innerHTML = '<option value="">Todas</option>';
+        // Função para gerar o gráfico de linha
+        function updateChart(income, expenses) {
+            const ctx = document.getElementById('financialChart').getContext('2d');
 
-            // Adicionar categorias fixas de Receita e Despesa, se ainda não existirem
-            const categories = ['Receita', 'Despesa', ...uniqueCategories];
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                categorySelect.appendChild(option);
-            });
+            const labels = ['Receitas', 'Despesas']; // Exemplo de rótulos, pode ser mais detalhado se for por mês
+            const data = {
+                labels: labels,
+                datasets: [{
+                    label: 'Valor (R$)',
+                    data: [income, expenses],
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            };
+
+            const config = {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return 'R$ ' + tooltipItem.raw.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            new Chart(ctx, config);
         }
 
         function addTransaction(event) {
             event.preventDefault();
-
             const date = document.getElementById('transaction-date').value;
             const description = document.getElementById('transaction-description').value;
             const category = document.getElementById('transaction-category').value;
@@ -261,23 +309,10 @@
             transactions.push(newTransaction);
             localStorage.setItem('transactions', JSON.stringify(transactions));
             updateUI();
-
             document.getElementById('transaction-form').reset();
         }
 
-        function applyFilters() {
-            updateUI();
-        }
-
-        function exportToExcel() {
-            // Lógica para exportar para Excel
-        }
-
-        function exportToPDF() {
-            // Lógica para exportar para PDF
-        }
-
-        // Atualiza a UI na inicialização
+        // Inicializar a interface
         updateUI();
     </script>
 </body>
